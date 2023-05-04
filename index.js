@@ -19,6 +19,10 @@ const client = new MongoClient(uri, {
 const database = client.db("hadi");
 const person = database.collection("israt");
 
+const authenticateUser=database.collection("user")
+
+
+// post an appointment. 
 app.post("/appointments", (req, res) => {
   async function run() {
     try {
@@ -32,6 +36,47 @@ app.post("/appointments", (req, res) => {
   run();
 });
 
+// A person cant authenticate 2 time using same email.
+// This is post method
+app.post("/users", async (req, res) => {
+    try {
+      const user = req.body;
+      const result = await authenticateUser.insertOne(user);
+      console.log(result);
+      res.json(result);
+    } catch {
+      console.log("failed to write user");
+    }
+});
+
+// A person cant authenticate 2 time using same email.
+// Put method.
+app.put("/users", async (req, res) => {
+    try {
+      const user = req.body;
+      const filter = { email: user.email };
+      const options = { upsert: true };
+      const updateDoc = { $set: user };
+      const result = await authenticateUser.updateOne(filter, updateDoc, options);
+      res.json(result);
+    } catch {
+      console.log("failed to update user");
+    }
+});
+
+app.get("/users/makeAdmin/:emailId",async (req,res)=>{
+  const email=req.params.emailId
+  const query = {email: email}
+  const user=await authenticateUser.findOne(query)
+  let isAdmin = false 
+  if(user?.role==="admin"){
+    isAdmin = true 
+  }
+  res.json({admin: isAdmin})
+})
+
+
+// Get all the appointments.
 app.get("/appointments", (req, res) => {
   async function run() {
     try {
@@ -46,7 +91,7 @@ app.get("/appointments", (req, res) => {
   run();
 });
 
-// payment of booking search by id
+// Payment of booking search by id
 app.get("/appointment/bookingPayment/:id", (req, res) => {
   async function run() {
     const _id=new ObjectId(req.params.id)
@@ -57,46 +102,18 @@ app.get("/appointment/bookingPayment/:id", (req, res) => {
   run();
 });
 
+// don`t know what
 app.get("/appointments", async (req, res) => {
   const query = req.query.name;
   const result = await person.findOne(query);
   res.json(result);
 });
-
+// For testing. not involved in this app
 app.get("/users", async (req, res) => {
   async function run() {
     res.send("hello world");
   }
   run();
-});
-
-app.post("/users", async (req, res) => {
-  async function run() {
-    try {
-      const user = req.body;
-      const result = await person.insertOne(user);
-      console.log(result);
-      res.json(result);
-    } catch {
-      console.log("failed to write user");
-    }
-  }
-  run();
-});
-
-app.put("/users", async (req, res) => {
-  async function run() {
-    try {
-      const user = req.body;
-      const filter = { email: user.email };
-      const options = { upsert: true };
-      const updateDoc = { $set: user };
-      const result = await person.updateOne(filter, updateDoc, options);
-      res.json(result);
-    } catch {
-      console.log("failed to update user");
-    }
-  }
 });
 
 const PORT = process.env.port || 2020;
