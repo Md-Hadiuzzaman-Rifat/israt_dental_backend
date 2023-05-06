@@ -4,9 +4,17 @@ const cors = require("cors");
 const { MongoClient, ServerApiVersion } = require("mongodb");
 const ObjectId  = require("mongodb").ObjectId;
 
+// firebase back end authentication
+const admin = require("firebase-admin");
+var serviceAccount = require("./practice-jwt.json");
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
+
 app.use(express.json());
 app.use(cors());
-
+// -------
 const uri =
   "mongodb+srv://Israt_Dental:YLPe5II2CN2OGwPx@cluster0.koa7uom.mongodb.net/?retryWrites=true&w=majority";
 
@@ -17,8 +25,8 @@ const client = new MongoClient(uri, {
 });
 
 const database = client.db("hadi");
-const person = database.collection("israt");
 
+const person = database.collection("israt");
 const authenticateUser=database.collection("user")
 
 
@@ -63,7 +71,7 @@ app.put("/users", async (req, res) => {
       console.log("failed to update user");
     }
 });
-
+// checking, is the user is authorized or not
 app.get("/users/makeAdmin/:emailId",async (req,res)=>{
   const email=req.params.emailId
   const query = {email: email}
@@ -74,6 +82,52 @@ app.get("/users/makeAdmin/:emailId",async (req,res)=>{
   }
   res.json({admin: isAdmin})
 })
+
+
+// middleware before making an user
+async function verifyToken(req,res,next){
+  if (req.headers?.authorization?.startsWith('Bearer ')) {
+    const token = req.headers.authorization.split(' ')[1];
+    console.log(token)
+    try{
+      console.log("in verify try block")
+      const decodedUser = await admin.auth().verifyIdToken(token);
+      req.decodedEmail=  decodedUser.email
+    }
+    catch{
+
+    }
+  }
+  next()
+}
+
+// make a new admin
+app.put("/users/makeAdmin", verifyToken, async (req,res)=>{
+  const user=req.body 
+  const requester= req.decodedEmail
+console.log(requester)
+console.log(req.body)
+
+  if(requester){
+    const requesterAccount = await authenticateUser.findOne({email: requester})
+    if(requesterAccount.role === "admin"){
+      const filter = {email: user.email} 
+      console.log(filter)
+      const updateDoc={$set:{role:'admin'}}
+
+      const result =await authenticateUser.updateOne(filter, updateDoc)
+      res.json(result)
+    }else{
+      res.status(403).json({message:"You dont have the request"})
+    }
+  }
+})
+
+// app.put('/users/makeAdmin', async (req, res) => {
+//   console.log(req.body)
+//   res.send()
+// })
+
 
 
 // Get all the appointments.
