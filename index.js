@@ -3,6 +3,7 @@ const app = express();
 const cors = require("cors");
 const { MongoClient, ServerApiVersion } = require("mongodb");
 const ObjectId  = require("mongodb").ObjectId;
+const fileUpload = require('express-fileupload');
 
 // firebase back end authentication
 const admin = require("firebase-admin");
@@ -14,6 +15,8 @@ admin.initializeApp({
 
 app.use(express.json());
 app.use(cors());
+app.use(fileUpload());
+
 // -------
 const uri =
   "mongodb+srv://Israt_Dental:YLPe5II2CN2OGwPx@cluster0.koa7uom.mongodb.net/?retryWrites=true&w=majority";
@@ -24,11 +27,31 @@ const client = new MongoClient(uri, {
   serverApi: ServerApiVersion.v1,
 });
 
+// Database name
 const database = client.db("hadi");
 
+// collection List
 const person = database.collection("israt");
 const authenticateUser=database.collection("user")
+const doctorsCollection=database.collection("doctor")
 
+// Add New Doctor
+app.post("/dashboard/addDoctor",async(req,res)=>{
+
+  const name = req.body.name;
+            const email = req.body.email;
+            const pic = req.files.image;
+            const picData = pic.data;
+            const encodedPic = picData.toString('base64');
+            const imageBuffer = Buffer.from(encodedPic, 'base64');
+            const doctor = {
+                name,
+                email,
+                image: imageBuffer
+            }
+            const result = await doctorsCollection.insertOne(doctor);
+            res.json(result);
+})
 
 // post an appointment. 
 app.post("/appointments", (req, res) => {
@@ -71,6 +94,7 @@ app.put("/users", async (req, res) => {
       console.log("failed to update user");
     }
 });
+
 // checking, is the user is authorized or not
 app.get("/users/makeAdmin/:emailId",async (req,res)=>{
   const email=req.params.emailId
@@ -83,6 +107,11 @@ app.get("/users/makeAdmin/:emailId",async (req,res)=>{
   res.json({admin: isAdmin})
 })
 
+app.get('/doctors', async (req, res) => {
+  const cursor = doctorsCollection.find({});
+  const doctors = await cursor.toArray();
+  res.json(doctors);
+});
 
 // middleware before making an user
 async function verifyToken(req,res,next){
@@ -123,13 +152,6 @@ console.log(req.body)
   }
 })
 
-// app.put('/users/makeAdmin', async (req, res) => {
-//   console.log(req.body)
-//   res.send()
-// })
-
-
-
 // Get all the appointments.
 app.get("/appointments", (req, res) => {
   async function run() {
@@ -139,7 +161,7 @@ app.get("/appointments", (req, res) => {
       const appointments = await cursor.toArray();
       res.send(appointments);
     } catch {
-      console.log("failed to write");
+      // console.log("failed to write");
     }
   }
   run();
@@ -170,8 +192,9 @@ app.get("/users", async (req, res) => {
   run();
 });
 
-const PORT = process.env.port || 2020;
 
+
+const PORT = process.env.port || 2020
 app.listen(PORT, () => {
   console.log("Server is listening on port " + PORT);
 });
