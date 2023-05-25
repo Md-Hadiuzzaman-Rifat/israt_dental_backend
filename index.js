@@ -4,6 +4,9 @@ const cors = require("cors");
 const { MongoClient, ServerApiVersion } = require("mongodb");
 const ObjectId  = require("mongodb").ObjectId;
 const fileUpload = require('express-fileupload');
+const stripe = require('stripe')("sk_test_51Mr47xIrkfWin5GdyRzcOCurORjReOkIfOseW3nEW3FKbxl0Av3F2FhP0H23YHELZdmgL4mnZIK4UVzG7OHMttjY00ZSwnU538");
+
+require('dotenv').config()
 
 // firebase back end authentication
 const admin = require("firebase-admin");
@@ -13,13 +16,17 @@ admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
 });
 
+const corsOptions = {
+  optionsSuccessStatus: 200, 
+  credentials: true,
+  origin: "http://localhost:3000",
+};
 app.use(express.json());
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(fileUpload());
 
 // -------
-const uri =
-  "mongodb+srv://Israt_Dental:YLPe5II2CN2OGwPx@cluster0.koa7uom.mongodb.net/?retryWrites=true&w=majority";
+const uri =process.env.MONGODB_URL;
 
 const client = new MongoClient(uri, {
   useNewUrlParser: true,
@@ -31,9 +38,10 @@ const client = new MongoClient(uri, {
 const database = client.db("hadi");
 
 // collection List
-const person = database.collection("israt");
+const person = database.collection("schedule");
 const authenticateUser=database.collection("user")
 const doctorsCollection=database.collection("doctor")
+const paymentDetails=database.collection("payment")
 
 // Add New Doctor
 app.post("/dashboard/addDoctor",async(req,res)=>{
@@ -53,7 +61,7 @@ app.post("/dashboard/addDoctor",async(req,res)=>{
             res.json(result);
 })
 
-// post an appointment. 
+// Write an appointment. 
 app.post("/appointments", (req, res) => {
   async function run() {
     try {
@@ -73,7 +81,6 @@ app.post("/users", async (req, res) => {
     try {
       const user = req.body;
       const result = await authenticateUser.insertOne(user);
-      console.log(result);
       res.json(result);
     } catch {
       console.log("failed to write user");
@@ -107,13 +114,14 @@ app.get("/users/makeAdmin/:emailId",async (req,res)=>{
   res.json({admin: isAdmin})
 })
 
+// find all doctors
 app.get('/doctors', async (req, res) => {
   const cursor = doctorsCollection.find({});
   const doctors = await cursor.toArray();
   res.json(doctors);
 });
 
-// middleware before making an user
+// middleware for jwt before making an admin
 async function verifyToken(req,res,next){
   if (req.headers?.authorization?.startsWith('Bearer ')) {
     const token = req.headers.authorization.split(' ')[1];
@@ -130,7 +138,7 @@ async function verifyToken(req,res,next){
   next()
 }
 
-// make a new admin
+// make a new admin using jwt
 app.put("/users/makeAdmin", verifyToken, async (req,res)=>{
   const user=req.body 
   const requester= req.decodedEmail
@@ -178,12 +186,6 @@ app.get("/appointment/bookingPayment/:id", (req, res) => {
   run();
 });
 
-// don`t know what
-app.get("/appointments", async (req, res) => {
-  const query = req.query.name;
-  const result = await person.findOne(query);
-  res.json(result);
-});
 // For testing. not involved in this app
 app.get("/users", async (req, res) => {
   async function run() {
@@ -192,6 +194,34 @@ app.get("/users", async (req, res) => {
   run();
 });
 
+// create payment intent
+app.post('/create-payment-intent', async (req, res) => {
+  const paymentInfo = req.body;
+  const amount = paymentInfo.fee
+  // await paymentDetails.insertOne(req.body)
+  const paymentIntent = await stripe.paymentIntents.create({
+      currency: 'usd',
+      amount: amount*100,
+      payment_method_types: ['card']
+  });
+  res.json({ clientSecret: paymentIntent.client_secret })
+})
+
+
+// app.put('/appointments/:id', async (req, res) => {
+//   const id = req.params.id;
+//   const {payment} = req.body;
+//   const _id=new ObjectId(req.params.id)
+//   const filter=await person.findOne(_id)
+//   const updateDoc = {
+//       $set: {
+//           payment: payment
+//       }
+//   };
+//   const result = await appointmentsCollection.updateOne(filter, updateDoc);
+//   res.json("clicked"+result);
+//   res.send()
+// });
 
 
 const PORT = process.env.port || 2020

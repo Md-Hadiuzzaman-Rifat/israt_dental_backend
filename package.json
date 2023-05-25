@@ -12,8 +12,10 @@
   "license": "ISC",
   "dependencies": {
     "cors": "^2.8.5",
+    "dotenv": "^16.0.3",
     "express": "^4.18.2",
     "express-fileupload": "^1.4.0",
-    "firebase-admin": "^11.8.0"
+    "firebase-admin": "^11.8.0",
+    "stripe": "^12.5.0"
   }
 }
