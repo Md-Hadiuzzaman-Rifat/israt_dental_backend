@@ -1,12 +1,12 @@
 const express = require("express");
 const app = express();
 const cors = require("cors");
+require('dotenv').config()
 const { MongoClient, ServerApiVersion } = require("mongodb");
 const ObjectId  = require("mongodb").ObjectId;
 const fileUpload = require('express-fileupload');
-const stripe = require('stripe')("sk_test_51Mr47xIrkfWin5GdyRzcOCurORjReOkIfOseW3nEW3FKbxl0Av3F2FhP0H23YHELZdmgL4mnZIK4UVzG7OHMttjY00ZSwnU538");
+const stripe = require('stripe')(process.env.PAYMENT_STRIPE);
 
-require('dotenv').config()
 
 // firebase back end authentication
 const admin = require("firebase-admin");
@@ -16,13 +16,9 @@ admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
 });
 
-const corsOptions = {
-  optionsSuccessStatus: 200, 
-  credentials: true,
-  origin: "http://localhost:3000",
-};
+
 app.use(express.json());
-app.use(cors(corsOptions));
+app.use(cors());
 app.use(fileUpload());
 
 // -------
