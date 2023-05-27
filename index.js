@@ -220,7 +220,7 @@ app.post('/create-payment-intent', async (req, res) => {
 // });
 
 
-const PORT = process.env.PORT || 2020
+const PORT = process.env.PORT
 app.listen(PORT, () => {
   console.log("Server is listening on port " + PORT);
 });
